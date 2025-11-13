@@ -1,5 +1,5 @@
 import pool from '../database/connection.js';
-import { generateStudyMaterial, assessBloomLevel } from '../services/openaiService.js';
+import { generateStudyMaterial, assessBloomLevel, recognizeAndEvaluateHandwriting } from '../services/openaiService.js';
 
 export const getStudyMaterial = async (req, res) => {
   try {
@@ -101,5 +101,42 @@ export const getProgress = async (req, res) => {
   } catch (error) {
     console.error('Error getting progress:', error);
     res.status(500).json({ error: 'Failed to retrieve progress' });
+  }
+};
+
+// New endpoint for handwriting recognition and evaluation
+export const submitHandwrittenAnswer = async (req, res) => {
+  try {
+    const { subject, topic, question, imageData, bloomLevel, typedAnswer } = req.body;
+    const userId = req.user.id;
+
+    if (!subject || !topic || !question || !imageData || !bloomLevel) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    // Recognize and evaluate handwriting using OpenAI Vision
+    const assessment = await recognizeAndEvaluateHandwriting(
+      imageData, 
+      question, 
+      bloomLevel,
+      typedAnswer ? `Student also typed: ${typedAnswer}` : ''
+    );
+
+    // Update bloom_progress
+    await pool.query(
+      `INSERT INTO bloom_progress (user_id, subject, topic, bloom_level, score, attempts, last_updated)
+       VALUES ($1, $2, $3, $4, $5, 1, CURRENT_TIMESTAMP)
+       ON CONFLICT (user_id, subject, topic, bloom_level)
+       DO UPDATE SET 
+         score = ((bloom_progress.score * bloom_progress.attempts) + $5) / (bloom_progress.attempts + 1),
+         attempts = bloom_progress.attempts + 1,
+         last_updated = CURRENT_TIMESTAMP`,
+      [userId, subject, topic, bloomLevel, assessment.score]
+    );
+
+    res.json(assessment);
+  } catch (error) {
+    console.error('Error submitting handwritten answer:', error);
+    res.status(500).json({ error: 'Failed to assess handwritten answer' });
   }
 };

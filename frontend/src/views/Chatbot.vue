@@ -66,16 +66,17 @@
         </div>
 
         <div class="chat-input-area">
-          <textarea 
+          <HandwritingCanvas 
             v-model="userInput"
-            @keydown.enter.exact.prevent="sendMessage"
-            placeholder="Type your message or question..."
-            rows="2"
-          ></textarea>
+            @canvas-data="handleCanvasData"
+            placeholder="Write or type your message or question..."
+            :rows="2"
+            :enable-recognition="true"
+          />
           <button 
             @click="sendMessage"
             class="btn btn-primary"
-            :disabled="!userInput.trim() || isTyping"
+            :disabled="(!userInput.trim() && !currentCanvasData) || isTyping"
           >
             Send
           </button>
@@ -89,6 +90,7 @@
 import { ref, onMounted, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { chatAPI } from '../api';
+import HandwritingCanvas from '../components/HandwritingCanvas.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -101,6 +103,7 @@ const currentBloomLevel = ref('Remember');
 
 const messages = ref([]);
 const userInput = ref('');
+const currentCanvasData = ref(null);
 const isTyping = ref(false);
 const sessionId = ref(null);
 const messagesContainer = ref(null);
@@ -111,16 +114,23 @@ const goBack = () => {
   router.push('/dashboard');
 };
 
-const sendMessage = async () => {
-  if (!userInput.value.trim()) return;
+const handleCanvasData = (data) => {
+  currentCanvasData.value = data;
+};
 
-  const messageText = userInput.value;
+const sendMessage = async () => {
+  if (!userInput.value.trim() && !currentCanvasData.value) return;
+
+  const messageText = userInput.value || '[Handwritten message]';
   userInput.value = '';
+  const canvasData = currentCanvasData.value;
+  currentCanvasData.value = null;
 
   // Add user message
   messages.value.push({
     text: messageText,
     isUser: true,
+    hasDrawing: !!canvasData
   });
 
   scrollToBottom();

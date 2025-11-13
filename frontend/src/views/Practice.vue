@@ -42,16 +42,18 @@
               <div v-if="!submitted[index]" class="answer-section">
                 <div class="input-group">
                   <label>Your Answer:</label>
-                  <textarea 
+                  <HandwritingCanvas 
                     v-model="answers[index]"
-                    placeholder="Type your answer here..."
-                    rows="4"
-                  ></textarea>
+                    @canvas-data="(data) => canvasData[index] = data"
+                    placeholder="Write or type your answer here..."
+                    :rows="4"
+                    :enable-recognition="true"
+                  />
                 </div>
                 <button 
                   @click="submitAnswer(index, question)"
                   class="btn btn-primary"
-                  :disabled="!answers[index] || submitting[index]"
+                  :disabled="(!answers[index] && !canvasData[index]) || submitting[index]"
                 >
                   {{ submitting[index] ? 'Submitting...' : 'Submit Answer' }}
                 </button>
@@ -97,6 +99,7 @@
 import { ref, onMounted, reactive } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useContentStore } from '../stores/content';
+import HandwritingCanvas from '../components/HandwritingCanvas.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -105,6 +108,7 @@ const contentStore = useContentStore();
 const subject = ref(route.query.subject || '');
 const topic = ref(route.query.topic || '');
 const answers = reactive({});
+const canvasData = reactive({});
 const submitted = reactive({});
 const submitting = reactive({});
 const assessments = reactive({});
@@ -127,13 +131,29 @@ const submitAnswer = async (index, question) => {
   submitting[index] = true;
   
   try {
-    const assessment = await contentStore.submitAnswer(
-      subject.value,
-      topic.value,
-      question.question,
-      answers[index],
-      question.bloomLevel
-    );
+    let assessment;
+    
+    // Check if there's handwriting/drawing
+    if (canvasData[index]) {
+      // Submit handwritten answer
+      assessment = await contentStore.submitHandwrittenAnswer(
+        subject.value,
+        topic.value,
+        question.question,
+        canvasData[index],
+        question.bloomLevel,
+        answers[index] || '' // Include typed text if any
+      );
+    } else {
+      // Submit typed answer only
+      assessment = await contentStore.submitAnswer(
+        subject.value,
+        topic.value,
+        question.question,
+        answers[index],
+        question.bloomLevel
+      );
+    }
     
     assessments[index] = assessment;
     submitted[index] = true;
@@ -147,6 +167,7 @@ const submitAnswer = async (index, question) => {
 
 const resetAnswer = (index) => {
   answers[index] = '';
+  canvasData[index] = null;
   submitted[index] = false;
   delete assessments[index];
 };

@@ -28,6 +28,7 @@ export const contentAPI = {
   getStudyMaterial: (subject, topic) => 
     api.get(`/content/study-material?subject=${subject}&topic=${topic}`),
   submitAnswer: (data) => api.post('/content/submit-answer', data),
+  submitHandwrittenAnswer: (data) => api.post('/content/submit-handwritten-answer', data),
   getProgress: (subject, topic) => {
     let url = '/content/progress';
     if (subject && topic) {
@@ -40,6 +41,7 @@ export const contentAPI = {
 export const chatAPI = {
   sendMessage: (data) => api.post('/chat/chat', data),
   getHistory: (sessionId) => api.get(`/chat/history?sessionId=${sessionId}`),
+  recognizeHandwriting: (imageData) => api.post('/chat/recognize-handwriting', { imageData }),
 };
 
 export const syllabusAPI = {

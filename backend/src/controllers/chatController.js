@@ -1,5 +1,5 @@
 import pool from '../database/connection.js';
-import { generateChatbotResponse } from '../services/openaiService.js';
+import { generateChatbotResponse, recognizeHandwrittenMessage } from '../services/openaiService.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export const chat = async (req, res) => {
@@ -71,5 +71,24 @@ export const getChatHistory = async (req, res) => {
   } catch (error) {
     console.error('Error getting chat history:', error);
     res.status(500).json({ error: 'Failed to retrieve chat history' });
+  }
+};
+
+// New endpoint for recognizing handwritten chat messages
+export const recognizeHandwriting = async (req, res) => {
+  try {
+    const { imageData } = req.body;
+
+    if (!imageData) {
+      return res.status(400).json({ error: 'Image data is required' });
+    }
+
+    // Recognize handwriting using OpenAI Vision
+    const result = await recognizeHandwrittenMessage(imageData);
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error recognizing handwriting:', error);
+    res.status(500).json({ error: 'Failed to recognize handwriting' });
   }
 };

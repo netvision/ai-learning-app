@@ -179,3 +179,114 @@ Respond with JSON:
     throw error;
   }
 };
+
+// New function for handwriting recognition and evaluation
+export const recognizeAndEvaluateHandwriting = async (imageBase64, question, bloomLevel, context = '') => {
+  const prompt = `You are an expert educator analyzing a student's handwritten answer.
+
+${context ? `Context: ${context}` : ''}
+Question: ${question}
+Bloom's Level: ${bloomLevel}
+
+Please:
+1. Read and transcribe the handwritten text/drawing
+2. Evaluate the answer based on the question and Bloom's level
+3. Provide constructive feedback
+
+If the image contains diagrams, drawings, or mathematical work, describe and evaluate them.
+
+Respond with JSON:
+{
+  "recognizedText": "what you read from the handwriting/drawing",
+  "score": 0-100,
+  "feedback": "constructive feedback on the answer",
+  "strengths": "what they did well",
+  "improvements": "areas to improve",
+  "hasDrawing": true/false,
+  "drawingDescription": "description of any diagrams or visual elements"
+}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',  // Using GPT-4o which has vision capabilities
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert educator who can read handwriting, interpret student work including diagrams and mathematical notation, and provide fair constructive evaluation based on Bloom\'s Taxonomy.'
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: prompt
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageBase64,
+                detail: 'high'
+              }
+            }
+          ]
+        }
+      ],
+      temperature: 0.5,
+      max_tokens: 1000,
+      response_format: { type: 'json_object' }
+    });
+
+    const content = JSON.parse(response.choices[0].message.content);
+    return content;
+  } catch (error) {
+    console.error('Error recognizing and evaluating handwriting:', error);
+    throw error;
+  }
+};
+
+// New function for recognizing handwritten chat messages
+export const recognizeHandwrittenMessage = async (imageBase64) => {
+  const prompt = `Please read and transcribe this handwritten text or drawing. 
+  
+If it's a question, statement, or text, transcribe it exactly.
+If it contains diagrams or drawings, describe what you see.
+
+Respond with JSON:
+{
+  "text": "the transcribed text or description of the drawing",
+  "hasDrawing": true/false
+}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: prompt
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageBase64,
+                detail: 'high'
+              }
+            }
+          ]
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 500,
+      response_format: { type: 'json_object' }
+    });
+
+    const content = JSON.parse(response.choices[0].message.content);
+    return content;
+  } catch (error) {
+    console.error('Error recognizing handwritten message:', error);
+    throw error;
+  }
+};

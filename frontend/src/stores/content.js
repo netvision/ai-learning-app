@@ -41,6 +41,23 @@ export const useContentStore = defineStore('content', {
       }
     },
 
+    async submitHandwrittenAnswer(subject, topic, question, imageData, bloomLevel, typedAnswer = '') {
+      try {
+        const response = await contentAPI.submitHandwrittenAnswer({
+          subject,
+          topic,
+          question,
+          imageData,
+          bloomLevel,
+          typedAnswer,
+        });
+        await this.fetchProgress(subject, topic);
+        return response.data;
+      } catch (error) {
+        throw error.response?.data?.error || 'Failed to submit handwritten answer';
+      }
+    },
+
     async fetchProgress(subject, topic) {
       try {
         const response = await contentAPI.getProgress(subject, topic);
